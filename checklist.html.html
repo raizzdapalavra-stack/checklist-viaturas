@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>Checklist de Viaturas — CTLA/CELOG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:    #0c1f3e;
+    --navy2:   #142f5e;
+    --blue:    #1a56db;
+    --amber:   #f59e0b;
+    --amber2:  #fbbf24;
+    --bg:      #e8ecf4;
+    --white:   #ffffff;
+    --text:    #1a2540;
+    --muted:   #64748b;
+    --border:  #d0d9ea;
+    --radius:  10px;
+
+    --ok-bg: #dcfce7; --ok-text: #166534; --ok-bd: #86efac;
+    --at-bg: #fef9c3; --at-text: #713f12; --at-bd: #fde047;
+    --av-bg: #fee2e2; --av-text: #7f1d1d; --av-bd: #fca5a5;
+    --in-bg: #dbeafe; --in-text: #1e3a8a; --in-bd: #93c5fd;
+    --ev-bg: #ede9fe; --ev-text: #4c1d95; --ev-bd: #c4b5fd;
+    --na-bg: #f3f4f6; --na-text: #6b7280; --na-bd: #d1d5db;
+  }
+
+  html, body {
+    font-family: 'Barlow', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── HEADER ─── */
+  .app-header {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 60%, #1a3a6e 100%);
+    padding: 18px 16px 14px;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 4px 20px rgba(0,0,0,.4);
+    border-bottom: 3px solid var(--amber);
+  }
+  .header-top {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .header-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 20px; font-weight: 800;
+    color: var(--white); letter-spacing: 1px;
+    line-height: 1.1;
+  }
+  .header-sub {
+    font-size: 11px; color: var(--amber2);
+    font-weight: 600; letter-spacing: 2px;
+    text-transform: uppercase; margin-top: 2px;
+  }
+  .header-logo {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px; font-weight: 700;
+    color: rgba(255,255,255,.5); letter-spacing: 1px;
+    text-align: right;
+  }
+
+  /* ─── PROGRESS BAR ─── */
+  .progress-wrap {
+    margin-top: 12px;
+    background: rgba(255,255,255,.12);
+    border-radius: 20px; height: 5px; overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%; background: var(--amber);
+    border-radius: 20px; transition: width .4s ease;
+    width: 0%;
+  }
+  .progress-label {
+    font-size: 10px; color: rgba(255,255,255,.6);
+    margin-top: 4px; text-align: right; letter-spacing: .5px;
+  }
+
+  /* ─── CONTENT ─── */
+  .content { padding: 14px 12px 120px; max-width: 700px; margin: 0 auto; }
+
+  /* ─── CARDS ─── */
+  .card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: 0 2px 10px rgba(0,0,0,.07);
+    border: 1px solid var(--border);
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+
+  /* ─── SECTION HEADERS (collapsible) ─── */
+  .section-header {
+    background: linear-gradient(90deg, var(--navy) 0%, var(--blue) 100%);
+    color: var(--white);
+    padding: 12px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .section-header.red  { background: linear-gradient(90deg, #7f1d1d, #dc2626); }
+  .section-header.teal { background: linear-gradient(90deg, #1e3a5f, #0369a1); }
+
+  .section-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px; font-weight: 700; letter-spacing: 1px;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .section-badge {
+    background: rgba(255,255,255,.2);
+    border-radius: 20px; padding: 1px 7px;
+    font-size: 10px; font-weight: 700; letter-spacing: .5px;
+  }
+  .section-chevron {
+    font-size: 16px; transition: transform .25s ease;
+    opacity: .8;
+  }
+  .section-header.open .section-chevron { transform: rotate(180deg); }
+
+  .section-body {
+    display: none; overflow: hidden;
+  }
+  .section-body.open { display: block; }
+
+  /* ─── IDENTIFICATION CARD ─── */
+  .id-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    padding: 14px;
+  }
+  .id-field label {
+    font-size: 10px; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .8px;
+    display: block; margin-bottom: 4px;
+  }
+  .id-field input {
+    width: 100%; border: 1.5px solid var(--border);
+    border-radius: 7px; padding: 10px 11px;
+    font-family: 'Barlow', sans-serif;
+    font-size: 15px; font-weight: 500; color: var(--text);
+    background: #f8faff;
+    outline: none; -webkit-appearance: none;
+    transition: border-color .2s;
+  }
+  .id-field input:focus { border-color: var(--blue); background: var(--white); }
+
+  /* ─── CHECKLIST ROWS ─── */
+  .check-row {
+    padding: 10px 14px;
+    border-bottom: 1px solid #eef0f5;
+    display: grid; grid-template-columns: 1fr auto;
+    align-items: start; gap: 10px;
+  }
+  .check-row:last-child { border-bottom: none; }
+  .check-item {
+    font-size: 14px; font-weight: 500; color: var(--text);
+    line-height: 1.35; padding-top: 2px;
+  }
+  .check-right {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+  }
+  .status-select {
+    -webkit-appearance: none; appearance: none;
+    border-radius: 6px; padding: 7px 10px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px; font-weight: 700; letter-spacing: .5px;
+    border-width: 1.5px; border-style: solid;
+    cursor: pointer; outline: none; text-align: center;
+    min-width: 110px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    padding-right: 24px;
+  }
+  .status-select.s-OK       { background-color: var(--ok-bg); color: var(--ok-text); border-color: var(--ok-bd); }
+  .status-select.s-ATENÇÃO  { background-color: var(--at-bg); color: var(--at-text); border-color: var(--at-bd); }
+  .status-select.s-AVARIA   { background-color: var(--av-bg); color: var(--av-text); border-color: var(--av-bd); }
+  .status-select.s-INSPEÇÃO { background-color: var(--in-bg); color: var(--in-text); border-color: var(--in-bd); }
+  .status-select.s-AVALIAÇÃO{ background-color: var(--ev-bg); color: var(--ev-text); border-color: var(--ev-bd); }
+  .status-select.s-NA       { background-color: var(--na-bg); color: var(--na-text); border-color: var(--na-bd); }
+
+  .obs-input {
+    width: 100%; border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 9px; font-family: 'Barlow', sans-serif;
+    font-size: 12px; color: var(--text); background: #f8faff;
+    outline: none; -webkit-appearance: none;
+  }
+  .obs-input:focus { border-color: var(--blue); }
+
+  /* ─── EPI GRID ─── */
+  .epi-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px;
+  }
+  .epi-row {
+    background: #f7f9ff;
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 12px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .epi-label { font-size: 12px; font-weight: 600; color: var(--text); }
+
+  /* ─── PLACA ROW ─── */
+  .placa-row {
+    padding: 10px 14px; border-bottom: 1px solid #eef0f5;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .placa-row label { font-size: 12px; font-weight: 700; color: rgba(255,255,255,.8); white-space: nowrap; }
+  .placa-input {
+    flex: 1; background: rgba(255,255,255,.15);
+    border: 1px solid rgba(255,255,255,.3);
+    border-radius: 6px; padding: 7px 10px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px; font-weight: 700;
+    color: var(--white); outline: none;
+    letter-spacing: 1px;
+  }
+  .placa-input::placeholder { color: rgba(255,255,255,.45); }
+
+  /* ─── TEXTAREAS ─── */
+  .textarea-wrap { padding: 12px 14px; }
+  textarea.main-area {
+    width: 100%; border: 1.5px solid var(--border);
+    border-radius: 8px; padding: 10px 12px;
+    font-family: 'Barlow', sans-serif;
+    font-size: 14px; color: var(--text);
+    background: #f8faff; outline: none;
+    resize: vertical; line-height: 1.6;
+    -webkit-appearance: none; min-height: 80px;
+  }
+  textarea.main-area:focus { border-color: var(--blue); background: var(--white); }
+
+  /* ─── BOTTOM ACTION BAR ─── */
+  .action-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--navy);
+    border-top: 3px solid var(--amber);
+    padding: 10px 12px 14px;
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px; z-index: 200;
+    box-shadow: 0 -4px 20px rgba(0,0,0,.3);
+  }
+  .btn {
+    border: none; border-radius: 8px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px; font-weight: 700; letter-spacing: .5px;
+    padding: 12px 8px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity .15s, transform .1s;
+    white-space: nowrap;
+  }
+  .btn:active { opacity: .8; transform: scale(.97); }
+  .btn-pdf  { background: #dc2626; color: var(--white); }
+  .btn-xls  { background: #16a34a; color: var(--white); }
+  .btn-reset{ background: rgba(255,255,255,.12); color: rgba(255,255,255,.7); border: 1px solid rgba(255,255,255,.2); }
+
+  /* ─── TOAST ─── */
+  .toast {
+    position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+    z-index: 999; border-radius: 10px;
+    padding: 11px 20px; font-size: 13px; font-weight: 600;
+    box-shadow: 0 4px 20px rgba(0,0,0,.2);
+    animation: slideIn .3s ease; white-space: nowrap;
+    max-width: calc(100vw - 32px); text-align: center;
+  }
+  .toast.success { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+  .toast.error   { background: #fee2e2; color: #7f1d1d; border: 1px solid #fca5a5; }
+  .toast.info    { background: #dbeafe; color: #1e3a8a; border: 1px solid #93c5fd; }
+  @keyframes slideIn { from { opacity:0; transform: translateX(-50%) translateY(-10px); } }
+
+  /* ─── STATUS PILL in row (read-only display) ─── */
+  .warning-alert {
+    background: #fff8e1; border-left: 4px solid var(--amber);
+    margin: 0 14px 10px; border-radius: 0 6px 6px 0;
+    padding: 7px 10px; font-size: 11px; font-weight: 600; color: #92400e;
+    display: none;
+  }
+  .warning-alert.show { display: block; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="app-header">
+  <div class="header-top">
+    <div>
+      <div class="header-title">🚛 CHECKLIST DE VIATURAS</div>
+      <div class="header-sub">CTLA / CELOG — FAB</div>
+    </div>
+    <div class="header-logo">FORÇA AÉREA<br>BRASILEIRA</div>
+  </div>
+  <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
+  <div class="progress-label" id="progressLabel">0 de 0 itens preenchidos</div>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+
+  <!-- IDENTIFICAÇÃO -->
+  <div class="card">
+    <div class="section-header open" onclick="toggle(this)">
+      <span class="section-title">📋 IDENTIFICAÇÃO DA VIATURA</span>
+      <span class="section-chevron">▼</span>
+    </div>
+    <div class="section-body open">
+      <div class="id-grid">
+        <div class="id-field">
+          <label>Cavalo Mecânico</label>
+          <input type="text" id="cavalo" placeholder="Ex: 12DE195" oninput="updateProgress()"/>
+        </div>
+        <div class="id-field">
+          <label>Quilometragem (KM)</label>
+          <input type="number" id="quilometragem" placeholder="Ex: 256329" oninput="updateProgress()"/>
+        </div>
+        <div class="id-field">
+          <label>Data</label>
+          <input type="date" id="data"/>
+        </div>
+        <div class="id-field">
+          <label>Motorista</label>
+          <input type="text" id="motorista" placeholder="Nome do motorista" oninput="updateProgress()"/>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PARTE INTERNA -->
+  <div class="card">
+    <div class="section-header open" onclick="toggle(this)">
+      <span class="section-title">🔧 1. PARTE INTERNA <span class="section-badge" id="b-parteInterna">—</span></span>
+      <span class="section-chevron">▼</span>
+    </div>
+    <div class="section-body open" id="s-parteInterna"></div>
+  </div>
+
+  <!-- INSTRUMENTOS DO PAINEL -->
+  <div class="card">
+    <div class="section-header open" onclick="toggle(this)">
+      <span class="section-title">🎛️ INSTRUMENTOS DO PAINEL <span class="section-badge" id="b-painel">—</span></span>
+      <span class="section-chevron">▼</span>
+    </div>
+    <div class="section-body open" id="s-painel"></div>
+  </div>
+
+  <!-- PARTE EXTERNA -->
+  <div class="card">
+    <div class="section-header" onclick="toggle(this)">
+      <span class="section-title">💡 2. PARTE EXTERNA <span class="section-badge" id="b-parteExterna">—</span></span>
+      <span class="section-chevron">▼</span>
+    </div>
+    <div class="section-body" id="s-parteExterna"></div>
+  </div>
+
+  <!-- FUNILARIA -->
+  <div class="card">
+    <div class="section-header" onclick="toggle(this)">
+      <span class="section-title">🚘 FUNILARIA &amp; PINTURA (CAVALO) <span class="section-badge" id="b-funilaria">—</span></span>
+      <span class="section-chevron">▼</span>
+    </div>
+    <div class="section-body" id="s-funilaria"></div>
+  </div>
+
+  <!-- EPIs -->
+  <div class="card">
+    <div class="section-header" onclick="toggle(this)">
+      <span class="section-title">🦺 3. EPIs <span class="section-badge" id="b-epis">—</span></span>
+      <span class="section-chevron">▼</span>
+    </div>
+    <div class="section-body" id="s-epis"></div>
+  </div>
+
+  <!-- CARGA SECA -->
+  <div class="card">
+    <div class="section-header" onclick="toggle(this)" id="hdr-carga">
+      <span class="section-title">📦 4. CARGA SECA <span class="section-badge" id="b-cargaSeca">—</span></span>
+      <span class="section-chevron">▼</span>
+    </div>
+    <div class="section-body" id="s-cargaSeca">
+      <div class="placa-row" style="background:linear-gradient(90deg,#0c1f3e,#142f5e);">
+        <label>Placa:</label>
+        <input class="placa-input" type="text" id="placaCarga" placeholder="Ex: IUT-6964" oninput="updateProgress()"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- CAMINHÃO BAÚ -->
+  <div class="card">
+    <div class="section-header" onclick="toggle(this)" style="background:linear-gradient(90deg,#1a3a1a,#166534);">
+      <span class="section-title">🚚 5. CAMINHÃO BAÚ <span class="section-badge" id="b-caminhaoExterno">—</span></span>
+      <span class="section-chevron">▼</span>
+    </div>
+    <div class="section-body" id="s-caminhaoExterno-wrap">
+      <div class="placa-row" style="background:linear-gradient(90deg,#1a3a1a,#166534);">
+        <label>Placa do Baú:</label>
+        <input class="placa-input" type="text" id="placaBau" placeholder="Ex: ABC-1234" oninput="updateProgress()"/>
+      </div>
+      <div style="padding:8px 14px 4px;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">🔦 Iluminação &amp; Pneus</div>
+      </div>
+      <div id="s-caminhaoExterno"></div>
+      <div style="padding:8px 14px 4px;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">🚘 Funilaria &amp; Baú</div>
+      </div>
+      <div id="s-caminhaoFunilaria"></div>
+    </div>
+  </div>
+
+  <!-- PANES -->
+  <div class="card">
+    <div class="section-header red" onclick="toggle(this)">
+      <span class="section-title">⚠️ RELATÓRIO DE PANES / FALHAS MECÂNICAS</span>
+      <span class="section-chevron">▼</span>
+    </div>
+    <div class="section-body">
+      <div class="textarea-wrap">
+        <textarea class="main-area" id="panes" rows="4"
+          placeholder="Descreva aqui qualquer pane, falha mecânica ou eletrônica observada durante a inspeção..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- REPOSIÇÃO -->
+  <div class="card">
+    <div class="section-header teal" onclick="toggle(this)">
+      <span class="section-title">🔩 5. REPOSIÇÃO DE FÁCIL TROCA (NECESSIDADES)</span>
+      <span class="section-chevron">▼</span>
+    </div>
+    <div class="section-body">
+      <div class="textarea-wrap">
+        <textarea class="main-area" id="reposicao" rows="3"
+          placeholder="Liste os itens necessários para reposição (um por linha)..."></textarea>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<!-- MODAL PDF SEÇÃO -->
+<div id="modalSecao" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;display:none;align-items:flex-end;justify-content:center;">
+  <div style="background:#fff;border-radius:18px 18px 0 0;padding:20px 16px 30px;width:100%;max-width:700px;max-height:85vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;color:#0c1f3e;letter-spacing:.5px;">📄 GERAR PDF POR SEÇÃO</div>
+      <button onclick="fecharModal()" style="background:#f1f5f9;border:none;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700;color:#64748b;cursor:pointer;">✕ Fechar</button>
+    </div>
+    <div style="font-size:12px;color:#64748b;margin-bottom:14px;">Selecione uma ou mais seções para incluir no PDF:</div>
+    <div id="secaoCheckboxes" style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px;"></div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="selecionarTodas(true)" style="flex:1;background:#e8ecf4;border:none;border-radius:8px;padding:9px;font-size:12px;font-weight:700;color:#0c1f3e;cursor:pointer;">✅ Todas</button>
+      <button onclick="selecionarTodas(false)" style="flex:1;background:#e8ecf4;border:none;border-radius:8px;padding:9px;font-size:12px;font-weight:700;color:#64748b;cursor:pointer;">☐ Nenhuma</button>
+      <button onclick="gerarPDFSecao()" id="btnGerarSecao" style="flex:2;background:#dc2626;border:none;border-radius:8px;padding:9px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;letter-spacing:.5px;">📄 GERAR PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PDF SEÇÃO -->
+<div id="modalSecao" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;align-items:flex-end;justify-content:center;">
+  <div style="background:#fff;border-radius:18px 18px 0 0;padding:20px 16px 30px;width:100%;max-width:700px;max-height:85vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;color:#0c1f3e;letter-spacing:.5px;">📄 GERAR PDF POR SEÇÃO</div>
+      <button onclick="fecharModal()" style="background:#f1f5f9;border:none;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700;color:#64748b;cursor:pointer;">✕ Fechar</button>
+    </div>
+    <div style="font-size:12px;color:#64748b;margin-bottom:14px;">Selecione as seções que deseja incluir no PDF:</div>
+    <div id="secaoCheckboxes" style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px;"></div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="selecionarTodas(true)" style="flex:1;background:#e8ecf4;border:none;border-radius:8px;padding:9px;font-size:12px;font-weight:700;color:#0c1f3e;cursor:pointer;">✅ Todas</button>
+      <button onclick="selecionarTodas(false)" style="flex:1;background:#e8ecf4;border:none;border-radius:8px;padding:9px;font-size:12px;font-weight:700;color:#64748b;cursor:pointer;">☐ Limpar</button>
+      <button onclick="gerarPDFSecao()" id="btnGerarSecao" style="flex:2;background:#7c3aed;border:none;border-radius:8px;padding:9px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;letter-spacing:.5px;">📄 GERAR PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM ACTION BAR -->
+<div class="action-bar" style="grid-template-columns:1fr 1fr 1fr 1fr;">
+  <button class="btn btn-pdf" onclick="gerarPDF()" id="btnPdf">📄 Completo</button>
+  <button class="btn" style="background:#7c3aed;color:#fff;" onclick="abrirModal()" id="btnPdfSecao">🗂️ Por Seção</button>
+  <button class="btn btn-xls" onclick="gerarExcel()" id="btnXls">📊 Excel</button>
+  <button class="btn btn-reset" onclick="resetar()">🔄 Reset</button>
+</div>
+
+<!-- TOAST -->
+<div class="toast success" id="toast" style="display:none;"></div>
+
+<script>
+// ─── DATA ─────────────────────────────────────────────────────────────────────
+const STATUS_OPTIONS = ["OK","ATENÇÃO","AVARIA","INSPEÇÃO","AVALIAÇÃO","N/A"];
+
+const SECTIONS = {
+  parteInterna: [
+    "Limpeza","Estofados","Iluminação Interna","Ar-condicionado",
+    "Extintor de Incêndio","Triângulo","Cone","Macaco"
+  ],
+  painel: ["Alerta","Setas","Manômetro do balão de ar","Marcador de combustível"],
+  parteExterna: [
+    "Farol Baixo","Farol Alto","Seta Lado Esquerdo","Seta Lado Direito",
+    "Alerta","Farol de Milha","Luz de Ré","Luz de Freio","Pneus (Cavalo)"
+  ],
+  funilaria: ["Escada Lado Motorista","Lado Carona","Pintura"],
+  epis:      ["Máscara","Óculos de Proteção","Colete Refletivo","Protetor Auricular"],
+  cargaSeca: [
+    "Lanternas","Setas Lado Esquerdo","Setas Lado Direito",
+    "Luz de Ré","Luz de Freio","Pintura (Funilaria)","Pneus (Carga Seca)"
+  ],
+  caminhaoExterno: [
+    "Farol Baixo","Farol Alto","Seta Lado Esquerdo","Seta Lado Direito",
+    "Alerta","Farol de Milha","Luz de Ré","Luz de Freio","Pneus (Caminhão)"
+  ],
+  caminhaoFunilaria: [
+    "Cabine — Lado Motorista","Cabine — Lado Carona","Pintura da Cabine",
+    "Baú — Lateral Esquerda","Baú — Lateral Direita","Baú — Traseira",
+    "Baú — Teto","Portas do Baú","Travas / Fechamento do Baú","Piso Interno do Baú"
+  ]
+};
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function renderSection(sectionKey, withObs = true) {
+  const items = SECTIONS[sectionKey];
+  const container = document.getElementById(`s-${sectionKey}`);
+  const isEpi = sectionKey === 'epis';
+
+  if (isEpi) {
+    const grid = document.createElement('div');
+    grid.className = 'epi-grid';
+    items.forEach((item, i) => {
+      const row = document.createElement('div');
+      row.className = 'epi-row';
+      row.innerHTML = `<div class="epi-label">${item}</div>
+        <select class="status-select s-OK" id="${sectionKey}_${i}_status"
+          onchange="onStatusChange(this,'${sectionKey}',${i})">
+          ${STATUS_OPTIONS.map(s=>`<option value="${s}">${s}</option>`).join('')}
+        </select>`;
+      grid.appendChild(row);
+    });
+    container.appendChild(grid);
+    return;
+  }
+
+  // If cargaSeca, items go after the placa row
+  items.forEach((item, i) => {
+    const row = document.createElement('div');
+    row.className = 'check-row';
+    row.innerHTML = `
+      <div>
+        <div class="check-item">${item}</div>
+        ${withObs ? `<input class="obs-input" id="${sectionKey}_${i}_obs"
+          placeholder="Observação..." oninput="updateProgress()"
+          style="margin-top:6px;"/>` : ''}
+      </div>
+      <div class="check-right">
+        <select class="status-select s-OK" id="${sectionKey}_${i}_status"
+          onchange="onStatusChange(this,'${sectionKey}',${i})">
+          ${STATUS_OPTIONS.map(s=>`<option value="${s}">${s}</option>`).join('')}
+        </select>
+      </div>`;
+    container.appendChild(row);
+  });
+}
+
+function onStatusChange(sel, section, idx) {
+  const cls = sel.value === 'N/A' ? 's-NA' : `s-${sel.value}`;
+  sel.className = `status-select ${cls}`;
+  updateBadge(section);
+  updateProgress();
+}
+
+function updateBadge(section) {
+  const items = SECTIONS[section];
+  // caminhaoFunilaria shares badge with caminhaoExterno
+  const badgeKey = section === 'caminhaoFunilaria' ? 'caminhaoExterno' : section;
+  const badge = document.getElementById(`b-${badgeKey}`);
+  if (!badge) return;
+
+  // For caminhaoExterno badge: combine both caminhão sections
+  let nonOk = 0;
+  const keysToCheck = badgeKey === 'caminhaoExterno' ? ['caminhaoExterno','caminhaoFunilaria'] : [section];
+  keysToCheck.forEach(k => {
+    (SECTIONS[k]||[]).forEach((_, i) => {
+      const s = document.getElementById(`${k}_${i}_status`);
+      if (s && s.value !== 'OK' && s.value !== 'N/A') nonOk++;
+    });
+  });
+  badge.textContent = nonOk > 0 ? `⚠ ${nonOk}` : '✓';
+  badge.style.background = nonOk > 0 ? 'rgba(245,158,11,.8)' : 'rgba(255,255,255,.2)';
+}
+
+function updateProgress() {
+  const allKeys = Object.keys(SECTIONS);
+  let total = 0, filled = 0;
+  allKeys.forEach(k => {
+    SECTIONS[k].forEach((_, i) => {
+      total++;
+      const s = document.getElementById(`${k}_${i}_status`);
+      if (s) filled++;
+    });
+  });
+  const pct = total > 0 ? Math.round(filled/total*100) : 0;
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = `${filled} de ${total} itens preenchidos`;
+  Object.keys(SECTIONS).forEach(updateBadge);
+}
+
+function toggle(header) {
+  header.classList.toggle('open');
+  const body = header.nextElementSibling;
+  body.classList.toggle('open');
+}
+
+// ─── COLLECT DATA ─────────────────────────────────────────────────────────────
+function collectData() {
+  const get = id => document.getElementById(id)?.value || '';
+  const getSection = (sec, withObs=true) =>
+    SECTIONS[sec].map((item,i) => ({
+      item,
+      status: get(`${sec}_${i}_status`) || 'OK',
+      ...(withObs ? { obs: get(`${sec}_${i}_obs`) } : {})
+    }));
+
+  return {
+    cavaloMecanico: get('cavalo'),
+    quilometragem:  get('quilometragem'),
+    data:           get('data') || new Date().toISOString().split('T')[0],
+    motorista:      get('motorista'),
+    parteInterna:   getSection('parteInterna'),
+    painel:         getSection('painel'),
+    parteExterna:   getSection('parteExterna'),
+    funilaria:      getSection('funilaria'),
+    epis:           getSection('epis', false),
+    cargaSeca: {
+      placa: get('placaCarga'),
+      itens: getSection('cargaSeca')
+    },
+    caminhaBau: {
+      placa: get('placaBau'),
+      externo:   getSection('caminhaoExterno'),
+      funilaria: getSection('caminhaoFunilaria')
+    },
+    panes:          get('panes'),
+    reposicao:      get('reposicao')
+  };
+}
+
+// ─── PDF ──────────────────────────────────────────────────────────────────────
+async function gerarPDF() {
+  const btn = document.getElementById('btnPdf');
+  btn.textContent = '⏳ Gerando...'; btn.disabled = true;
+  try {
+    const { jsPDF } = window.jspdf;
+    const data = collectData();
+    const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    const W = 210; let y = 15;
+
+    const corStatus = {
+      OK:[209,250,229], ATENÇÃO:[254,249,195], AVARIA:[254,226,226],
+      INSPEÇÃO:[219,234,254], AVALIAÇÃO:[237,233,254], 'N/A':[243,244,246]
+    };
+
+    // Header
+    doc.setFillColor(12,31,62);
+    doc.rect(0,0,W,28,'F');
+    doc.setFillColor(245,158,11);
+    doc.rect(0,25,W,3,'F');
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(16); doc.setFont('helvetica','bold');
+    doc.text('CHECKLIST DAS VIATURAS', W/2, 11, {align:'center'});
+    doc.setFontSize(9);
+    doc.text('CTLA / CELOG — FORÇA AÉREA BRASILEIRA', W/2, 18, {align:'center'});
+    doc.setFontSize(7.5);
+    doc.text(`Data: ${data.data}`, W/2, 24, {align:'center'});
+    y = 36;
+
+    // Info box
+    doc.setFillColor(232,237,247);
+    doc.roundedRect(10,y,W-20,18,2,2,'F');
+    doc.setTextColor(12,31,62);
+    doc.setFontSize(8.5); doc.setFont('helvetica','bold');
+    doc.text(`CAVALO MECÂNICO: ${data.cavaloMecanico||'—'}`, 14, y+6);
+    doc.text(`KM: ${data.quilometragem||'—'}`, 14, y+13);
+    doc.text(`MOTORISTA: ${data.motorista||'—'}`, W/2+5, y+6);
+    y += 24;
+
+    const drawSection = (title, rows, withObs=true) => {
+      if (y > 258) { doc.addPage(); y = 15; }
+      doc.setFillColor(12,31,62);
+      doc.rect(10,y,W-20,7,'F');
+      doc.setTextColor(255,255,255);
+      doc.setFontSize(7.5); doc.setFont('helvetica','bold');
+      doc.text(title.toUpperCase(), 14, y+5);
+      y += 8;
+      doc.setFillColor(210,220,240);
+      doc.rect(10,y,W-20,6,'F');
+      doc.setTextColor(30,50,100);
+      doc.setFontSize(7); doc.setFont('helvetica','bold');
+      doc.text('ITEM / SISTEMA',12,y+4);
+      doc.text('STATUS', withObs?110:155, y+4);
+      if (withObs) doc.text('OBSERVAÇÕES',140,y+4);
+      y += 7;
+      rows.forEach(row => {
+        if (y > 270) { doc.addPage(); y = 15; }
+        const c = corStatus[row.status]||[243,244,246];
+        doc.setFillColor(c[0],c[1],c[2]);
+        doc.rect(withObs?100:145, y-1, withObs?35:55, 6,'F');
+        doc.setTextColor(40,40,40);
+        doc.setFontSize(7.5); doc.setFont('helvetica','normal');
+        doc.text(row.item, 12, y+3.5);
+        doc.setFont('helvetica','bold');
+        doc.text(row.status, withObs?110:155, y+3.5);
+        doc.setFont('helvetica','normal');
+        if (withObs && row.obs) doc.text(row.obs.substring(0,55), 140, y+3.5);
+        doc.setDrawColor(200,210,230);
+        doc.line(10, y+5.5, W-10, y+5.5);
+        y += 7;
+      });
+      y += 4;
+    };
+
+    drawSection('1. PARTE INTERNA', data.parteInterna);
+    drawSection('INSTRUMENTOS DO PAINEL', data.painel);
+    drawSection('2. PARTE EXTERNA', data.parteExterna);
+    drawSection('FUNILARIA & PINTURA (CAVALO)', data.funilaria);
+    drawSection('3. EQUIPAMENTOS DE PROTEÇÃO INDIVIDUAL (EPIs)', data.epis, false);
+    drawSection(`4. CARGA SECA${data.cargaSeca.placa?' — '+data.cargaSeca.placa:''}`, data.cargaSeca.itens);
+    drawSection(`5. CAMINHÃO BAÚ — ILUMINAÇÃO & PNEUS${data.caminhaBau.placa?' — '+data.caminhaBau.placa:''}`, data.caminhaBau.externo);
+    drawSection('5. CAMINHÃO BAÚ — FUNILARIA & BAÚ', data.caminhaBau.funilaria);
+
+    const drawText = (title, text) => {
+      if (!text) return;
+      if (y > 255) { doc.addPage(); y = 15; }
+      doc.setFillColor(12,31,62); doc.rect(10,y,W-20,7,'F');
+      doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(7.5);
+      doc.text(title.toUpperCase(), 14, y+5);
+      y += 9;
+      doc.setTextColor(40,40,40); doc.setFont('helvetica','normal'); doc.setFontSize(8);
+      const lines = doc.splitTextToSize(text, W-24);
+      doc.text(lines, 14, y);
+      y += lines.length*5+4;
+    };
+    drawText('RELATÓRIO DE PANES / FALHAS MECÂNICAS', data.panes);
+    drawText('5. REPOSIÇÃO DE FÁCIL TROCA (NECESSIDADES)', data.reposicao);
+
+    // Footer
+    const total = doc.internal.getNumberOfPages();
+    for (let p=1;p<=total;p++) {
+      doc.setPage(p);
+      doc.setFillColor(12,31,62); doc.rect(0,287,W,10,'F');
+      doc.setFillColor(245,158,11); doc.rect(0,287,W,1,'F');
+      doc.setTextColor(255,255,255); doc.setFontSize(7);
+      doc.text('FAB - CTLA / CELOG', 14, 293);
+      doc.text(`Página ${p} de ${total}`, W-14, 293, {align:'right'});
+    }
+
+    doc.save(`checklist_${data.cavaloMecanico||'viatura'}_${data.data}.pdf`);
+    showToast('PDF gerado com sucesso! ✓', 'success');
+  } catch(e) {
+    showToast('Erro ao gerar PDF: ' + e.message, 'error');
+  }
+  btn.textContent = '📄 PDF'; btn.disabled = false;
+}
+
+// ─── EXCEL ────────────────────────────────────────────────────────────────────
+function gerarExcel() {
+  const btn = document.getElementById('btnXls');
+  btn.textContent = '⏳ Gerando...'; btn.disabled = true;
+  try {
+    const data = collectData();
+    const wb = XLSX.utils.book_new();
+    const toRows = (title, items, withObs=true) => [
+      [title],
+      withObs ? ['ITEM','STATUS','OBSERVAÇÕES'] : ['ITEM','STATUS'],
+      ...items.map(r => withObs ? [r.item,r.status,r.obs||'—'] : [r.item,r.status]),
+      []
+    ];
+    const allRows = [
+      ['CHECKLIST DAS VIATURAS — CTLA / CELOG'],[],
+      ['Cavalo Mecânico', data.cavaloMecanico],
+      ['Quilometragem (KM)', data.quilometragem],
+      ['Data', data.data],
+      ['Motorista', data.motorista],[],
+      ...toRows('1. PARTE INTERNA', data.parteInterna),
+      ...toRows('INSTRUMENTOS DO PAINEL', data.painel),
+      ...toRows('2. PARTE EXTERNA', data.parteExterna),
+      ...toRows('FUNILARIA & PINTURA (CAVALO)', data.funilaria),
+      ...toRows('3. EPIs', data.epis, false),
+      ...toRows(`4. CARGA SECA${data.cargaSeca.placa?' — '+data.cargaSeca.placa:''}`, data.cargaSeca.itens),
+      ...toRows(`5. CAMINHÃO BAÚ — ILUMINAÇÃO & PNEUS${data.caminhaBau.placa?' — '+data.caminhaBau.placa:''}`, data.caminhaBau.externo),
+      ...toRows('5. CAMINHÃO BAÚ — FUNILARIA & BAÚ', data.caminhaBau.funilaria),
+      ['RELATÓRIO DE PANES / FALHAS MECÂNICAS'],
+      [data.panes||'—'],[],
+      ['5. REPOSIÇÃO DE FÁCIL TROCA'],
+      [data.reposicao||'—']
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(allRows);
+    ws['!cols'] = [{wch:35},{wch:12},{wch:50}];
+    XLSX.utils.book_append_sheet(wb, ws, 'Checklist');
+    XLSX.writeFile(wb, `checklist_${data.cavaloMecanico||'viatura'}_${data.data}.xlsx`);
+    showToast('Excel gerado com sucesso! ✓', 'success');
+  } catch(e) {
+    showToast('Erro ao gerar Excel: ' + e.message, 'error');
+  }
+  btn.textContent = '📊 Excel'; btn.disabled = false;
+}
+
+// ─── RESET ────────────────────────────────────────────────────────────────────
+function resetar() {
+  if (!confirm('Limpar todos os dados do formulário?')) return;
+  ['cavalo','quilometragem','motorista','panes','reposicao','placaCarga','placaBau'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('data').value = new Date().toISOString().split('T')[0];
+  Object.keys(SECTIONS).forEach(sec => {
+    SECTIONS[sec].forEach((_,i) => {
+      const s = document.getElementById(`${sec}_${i}_status`);
+      if (s) { s.value='OK'; s.className='status-select s-OK'; }
+      const o = document.getElementById(`${sec}_${i}_obs`);
+      if (o) o.value='';
+    });
+  });
+  updateProgress();
+  showToast('Formulário resetado.', 'info');
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast ${type}`; t.style.display='block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.style.display='none', 3000);
+}
+
+// ─── SEÇÕES DISPONÍVEIS PARA SELEÇÃO ─────────────────────────────────────────
+const SECOES_PDF = [
+  { id: 'identificacao', label: '📋 Identificação da Viatura', tipo: 'info' },
+  { id: 'parteInterna',  label: '🔧 1. Parte Interna',         tipo: 'secao' },
+  { id: 'painel',        label: '🎛️ Instrumentos do Painel',   tipo: 'secao' },
+  { id: 'parteExterna',  label: '💡 2. Parte Externa',          tipo: 'secao' },
+  { id: 'funilaria',     label: '🚘 Funilaria & Pintura',       tipo: 'secao' },
+  { id: 'epis',          label: '🦺 3. EPIs',                   tipo: 'secao', semObs: true },
+  { id: 'cargaSeca',     label: '📦 4. Carga Seca',             tipo: 'carga' },
+  { id: 'caminhaBau',    label: '🚚 5. Caminhão Baú (completo)',tipo: 'bau' },
+  { id: 'panes',         label: '⚠️ Relatório de Panes',        tipo: 'texto' },
+  { id: 'reposicao',     label: '🔩 Reposição de Fácil Troca',  tipo: 'texto' },
+];
+
+function abrirModal() {
+  const container = document.getElementById('secaoCheckboxes');
+  container.innerHTML = '';
+  SECOES_PDF.forEach(sec => {
+    const label = document.createElement('label');
+    label.style.cssText = 'display:flex;align-items:center;gap:10px;background:#f8faff;border:1.5px solid #d0d9ea;border-radius:9px;padding:11px 13px;cursor:pointer;font-size:14px;font-weight:600;color:#1a2540;';
+    label.innerHTML = `<input type="checkbox" id="chk_${sec.id}" checked style="width:17px;height:17px;accent-color:#7c3aed;cursor:pointer;"> ${sec.label}`;
+    container.appendChild(label);
+  });
+  document.getElementById('modalSecao').style.display = 'flex';
+}
+
+function fecharModal() {
+  document.getElementById('modalSecao').style.display = 'none';
+}
+
+function selecionarTodas(val) {
+  SECOES_PDF.forEach(sec => {
+    const el = document.getElementById(`chk_${sec.id}`);
+    if (el) el.checked = val;
+  });
+}
+
+async function gerarPDFSecao() {
+  const btn = document.getElementById('btnGerarSecao');
+  btn.textContent = '⏳ Gerando...'; btn.disabled = true;
+  try {
+    const selecionadas = SECOES_PDF.filter(s => document.getElementById(`chk_${s.id}`)?.checked);
+    if (!selecionadas.length) { showToast('Selecione ao menos uma seção.', 'error'); btn.textContent = '📄 GERAR PDF'; btn.disabled = false; return; }
+
+    const { jsPDF } = window.jspdf;
+    const data = collectData();
+    const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    const W = 210; let y = 15;
+
+    const corStatus = {
+      OK:[209,250,229], ATENÇÃO:[254,249,195], AVARIA:[254,226,226],
+      INSPEÇÃO:[219,234,254], AVALIAÇÃO:[237,233,254], 'N/A':[243,244,246]
+    };
+
+    // Header
+    doc.setFillColor(12,31,62); doc.rect(0,0,W,28,'F');
+    doc.setFillColor(245,158,11); doc.rect(0,25,W,3,'F');
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(16); doc.setFont('helvetica','bold');
+    doc.text('CHECKLIST DAS VIATURAS', W/2, 11, {align:'center'});
+    doc.setFontSize(9);
+    doc.text('CTLA / CELOG — FORÇA AÉREA BRASILEIRA', W/2, 18, {align:'center'});
+    doc.setFontSize(7.5);
+    doc.text(`Data: ${data.data}`, W/2, 24, {align:'center'});
+    y = 36;
+
+    const drawSection = (title, rows, withObs=true) => {
+      if (y > 258) { doc.addPage(); y = 15; }
+      doc.setFillColor(12,31,62); doc.rect(10,y,W-20,7,'F');
+      doc.setTextColor(255,255,255); doc.setFontSize(7.5); doc.setFont('helvetica','bold');
+      doc.text(title.toUpperCase(), 14, y+5); y += 8;
+      doc.setFillColor(210,220,240); doc.rect(10,y,W-20,6,'F');
+      doc.setTextColor(30,50,100); doc.setFontSize(7); doc.setFont('helvetica','bold');
+      doc.text('ITEM / SISTEMA',12,y+4);
+      doc.text('STATUS', withObs?110:155, y+4);
+      if (withObs) doc.text('OBSERVAÇÕES',140,y+4);
+      y += 7;
+      rows.forEach(row => {
+        if (y > 270) { doc.addPage(); y = 15; }
+        const c = corStatus[row.status]||[243,244,246];
+        doc.setFillColor(c[0],c[1],c[2]);
+        doc.rect(withObs?100:145, y-1, withObs?35:55, 6,'F');
+        doc.setTextColor(40,40,40); doc.setFontSize(7.5); doc.setFont('helvetica','normal');
+        doc.text(row.item, 12, y+3.5);
+        doc.setFont('helvetica','bold');
+        doc.text(row.status, withObs?110:155, y+3.5);
+        doc.setFont('helvetica','normal');
+        if (withObs && row.obs) doc.text(row.obs.substring(0,55), 140, y+3.5);
+        doc.setDrawColor(200,210,230); doc.line(10, y+5.5, W-10, y+5.5);
+        y += 7;
+      });
+      y += 4;
+    };
+
+    const drawText = (title, text) => {
+      if (!text) return;
+      if (y > 255) { doc.addPage(); y = 15; }
+      doc.setFillColor(12,31,62); doc.rect(10,y,W-20,7,'F');
+      doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(7.5);
+      doc.text(title.toUpperCase(), 14, y+5); y += 9;
+      doc.setTextColor(40,40,40); doc.setFont('helvetica','normal'); doc.setFontSize(8);
+      const lines = doc.splitTextToSize(text, W-24);
+      doc.text(lines, 14, y);
+      y += lines.length*5+4;
+    };
+
+    selecionadas.forEach(sec => {
+      if (sec.id === 'identificacao') {
+        doc.setFillColor(232,237,247);
+        doc.roundedRect(10,y,W-20,18,2,2,'F');
+        doc.setTextColor(12,31,62); doc.setFontSize(8.5); doc.setFont('helvetica','bold');
+        doc.text(`CAVALO MECÂNICO: ${data.cavaloMecanico||'—'}`, 14, y+6);
+        doc.text(`KM: ${data.quilometragem||'—'}`, 14, y+13);
+        doc.text(`MOTORISTA: ${data.motorista||'—'}`, W/2+5, y+6);
+        y += 24;
+      } else if (sec.id === 'parteInterna')  drawSection('1. PARTE INTERNA', data.parteInterna);
+      else if (sec.id === 'painel')          drawSection('INSTRUMENTOS DO PAINEL', data.painel);
+      else if (sec.id === 'parteExterna')    drawSection('2. PARTE EXTERNA', data.parteExterna);
+      else if (sec.id === 'funilaria')       drawSection('FUNILARIA & PINTURA (CAVALO)', data.funilaria);
+      else if (sec.id === 'epis')            drawSection('3. EPIs', data.epis, false);
+      else if (sec.id === 'cargaSeca')       drawSection(`4. CARGA SECA${data.cargaSeca.placa?' — '+data.cargaSeca.placa:''}`, data.cargaSeca.itens);
+      else if (sec.id === 'caminhaBau') {
+        drawSection(`5. CAMINHÃO BAÚ — ILUMINAÇÃO & PNEUS${data.caminhaBau.placa?' — '+data.caminhaBau.placa:''}`, data.caminhaBau.externo);
+        drawSection('5. CAMINHÃO BAÚ — FUNILARIA & BAÚ', data.caminhaBau.funilaria);
+      }
+      else if (sec.id === 'panes')     drawText('RELATÓRIO DE PANES / FALHAS MECÂNICAS', data.panes);
+      else if (sec.id === 'reposicao') drawText('REPOSIÇÃO DE FÁCIL TROCA (NECESSIDADES)', data.reposicao);
+    });
+
+    // Footer
+    const total = doc.internal.getNumberOfPages();
+    for (let p=1;p<=total;p++) {
+      doc.setPage(p);
+      doc.setFillColor(12,31,62); doc.rect(0,287,W,10,'F');
+      doc.setFillColor(245,158,11); doc.rect(0,287,W,1,'F');
+      doc.setTextColor(255,255,255); doc.setFontSize(7);
+      doc.text('FAB - CTLA / CELOG', 14, 293);
+      doc.text(`Página ${p} de ${total}`, W-14, 293, {align:'right'});
+    }
+
+    const nomeSecs = selecionadas.length === 1
+      ? selecionadas[0].label.replace(/[^\w]/g,'').substring(0,15)
+      : 'selecao';
+    doc.save(`checklist_${data.cavaloMecanico||'viatura'}_${nomeSecs}_${data.data}.pdf`);
+    showToast('PDF gerado com sucesso! ✓', 'success');
+    fecharModal();
+  } catch(e) {
+    showToast('Erro: ' + e.message, 'error');
+  }
+  btn.textContent = '📄 GERAR PDF'; btn.disabled = false;
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('data').value = new Date().toISOString().split('T')[0];
+
+  renderSection('parteInterna');
+  renderSection('painel');
+  renderSection('parteExterna');
+  renderSection('funilaria');
+  renderSection('epis', false);
+  renderSection('cargaSeca');
+  renderSection('caminhaoExterno');
+  renderSection('caminhaoFunilaria');
+  updateProgress();
+});
+</script>
+</body>
+</html>
